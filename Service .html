@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Report Form with Signature and PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, textarea, canvas {
+            width: 100%;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        canvas {
+            border: 1px solid #000;
+            height: 150px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Service Report Form</h1>
+        <form id="serviceForm">
+            <h3>Service Report</h3>
+            <label for="reportNumber">Service Report Number</label>
+            <input type="text" id="reportNumber" name="reportNumber" readonly>
+            
+            <h3>Client Information</h3>
+            <label for="clientName">Client Name</label>
+            <input type="text" id="clientName" name="clientName" required>
+            
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required>
+
+            <h3>Signature</h3>
+            <label for="signatureCanvas">Draw Your Signature Below:</label>
+            <canvas id="signatureCanvas"></canvas>
+            <button type="button" class="btn" id="clearButton">Clear Signature</button>
+            
+            <!-- Hidden input to store signature data -->
+            <input type="hidden" id="signatureData" name="signature">
+
+            <br>
+            <button type="submit" class="btn">Submit Report</button>
+        </form>
+    </div>
+
+    <script>
+        // Incremental Service Report Number
+        let reportCounter = localStorage.getItem('reportCounter') || 1; // Use localStorage to persist the counter
+        const reportNumberField = document.getElementById('reportNumber');
+        reportNumberField.value = `SR-${String(reportCounter).padStart(4, '0')}`;
+
+        // Canvas Signature Logic
+        const canvas = document.getElementById('signatureCanvas');
+        const context = canvas.getContext('2d');
+        const clearButton = document.getElementById('clearButton');
+        const signatureData = document.getElementById('signatureData');
+
+        let isDrawing = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            context.beginPath();
+            context.moveTo(e.offsetX, e.offsetY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                context.lineTo(e.offsetX, e.offsetY);
+                context.stroke();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            signatureData.value = canvas.toDataURL(); // Save signature as Base64
+        });
+
+        clearButton.addEventListener('click', () => {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            signatureData.value = ''; // Clear hidden input
+        });
+
+        // Save as PDF on Submit
+        const form = document.getElementById('serviceForm');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent default form submission
+            
+            // Get form data
+            const clientName = document.getElementById('clientName').value;
+            const email = document.getElementById('email').value;
+            const signature = signatureData.value;
+            
+            // Create a PDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            pdf.text("Service Report Form", 10, 10);
+            pdf.text(`Report Number: ${reportNumberField.value}`, 10, 20);
+            pdf.text(`Client Name: ${clientName}`, 10, 30);
+            pdf.text(`Email: ${email}`, 10, 40);
+
+            if (signature) {
+                // Add signature image to PDF
+                pdf.addImage(signature, 'PNG', 10, 50, 100, 50);
+            } else {
+                pdf.text("Signature: Not Provided", 10, 50);
+            }
+
+            // Save the PDF
+            pdf.save(`${reportNumberField.value}.pdf`);
+
+            // Increment Report Counter and Save
+            reportCounter++;
+            localStorage.setItem('reportCounter', reportCounter);
+            alert("Report saved as PDF!");
+            form.reset();
+            reportNumberField.value = `SR-${String(reportCounter).padStart(4, '0')}`;
+        });
+    </script>
+</body>
+</html>
